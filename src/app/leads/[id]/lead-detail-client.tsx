@@ -28,6 +28,11 @@ import {
 } from "@/components/ui/card"
 import { ExternalLink, FileText, MapPin, Check, Loader2 } from "lucide-react"
 
+function nullText(value: string | null, emptyLabel?: string): string {
+  if (value == null || value.trim() === "") return emptyLabel ?? "—"
+  return value
+}
+
 interface LeadDetailClientProps {
   lead: Lead
 }
@@ -36,7 +41,7 @@ export function LeadDetailClient({ lead: initialLead }: LeadDetailClientProps) {
   const [lead, setLead] = useState(initialLead)
   const [phoneNumber, setPhoneNumber] = useState(initialLead.phone_number ?? "")
   const [contacted, setContacted] = useState(initialLead.contacted)
-  const [status, setStatus] = useState<LeadStatus>(initialLead.status)
+  const [status, setStatus] = useState(initialLead.status ?? "new")
   const [notes, setNotes] = useState(initialLead.notes ?? "")
   const [saving, setSaving] = useState(false)
   const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle")
@@ -55,7 +60,7 @@ export function LeadDetailClient({ lead: initialLead }: LeadDetailClientProps) {
       .update({
         phone_number: phoneNumber || null,
         contacted,
-        status,
+        status: status || null,
         notes: notes || null,
         updated_at: new Date().toISOString(),
       })
@@ -71,13 +76,18 @@ export function LeadDetailClient({ lead: initialLead }: LeadDetailClientProps) {
       ...prev,
       phone_number: phoneNumber || null,
       contacted,
-      status,
+      status: status || null,
       notes: notes || null,
       updated_at: new Date().toISOString(),
     }))
     setSaveStatus("success")
     setSaving(false)
   }
+
+  const statusOptions = [
+    ...LEAD_STATUSES,
+    ...(status && !LEAD_STATUSES.includes(status as LeadStatus) ? [status] : []),
+  ]
 
   return (
     <div className="space-y-6">
@@ -88,24 +98,56 @@ export function LeadDetailClient({ lead: initialLead }: LeadDetailClientProps) {
         <CardContent className="space-y-3">
           <div>
             <p className="text-sm text-muted-foreground">Address</p>
-            <p className="font-medium">{lead.address || "—"}</p>
+            <p className="font-medium">{nullText(lead.address)}</p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-muted-foreground">APN</p>
-              <p className="font-mono text-sm">{lead.apn || "—"}</p>
+              <p className="font-mono text-sm">{nullText(lead.apn)}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Recording Number</p>
-              <p className="font-mono text-sm">{lead.recording_number || "—"}</p>
+              <p className="font-mono text-sm">{nullText(lead.recording_number)}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Recording Date</p>
-              <p className="text-sm">{lead.recording_date || "—"}</p>
+              <p className="text-sm">{nullText(lead.recording_date)}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Document Code</p>
-              <p className="text-sm">{lead.document_code || "—"}</p>
+              <p className="text-sm">{nullText(lead.document_code)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Document Type</p>
+              <p className="text-sm">{nullText(lead.document_type)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Owner Names</p>
+              <p className="text-sm">{nullText(lead.owner_names)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Beneficiary Name</p>
+              <p className="text-sm">{nullText(lead.beneficiary_name)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Trustee Name</p>
+              <p className="text-sm">{nullText(lead.trustee_name)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Auction Date</p>
+              <p className="text-sm">{nullText(lead.auction_date, "no auction date")}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Auction Time</p>
+              <p className="text-sm">{nullText(lead.auction_time)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Original Principal Balance</p>
+              <p className="text-sm">{nullText(lead.original_principal_balance)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Parse Status</p>
+              <p className="text-sm">{nullText(lead.parse_status)}</p>
             </div>
           </div>
         </CardContent>
@@ -136,12 +178,12 @@ export function LeadDetailClient({ lead: initialLead }: LeadDetailClientProps) {
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">Status</label>
-            <Select value={status} onValueChange={(v) => setStatus(v as LeadStatus)}>
+            <Select value={status} onValueChange={(v) => setStatus(v)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {LEAD_STATUSES.map((s) => (
+                {statusOptions.map((s) => (
                   <SelectItem key={s} value={s}>
                     {s}
                   </SelectItem>
@@ -245,6 +287,17 @@ export function LeadDetailClient({ lead: initialLead }: LeadDetailClientProps) {
               <span className="text-sm text-destructive">Failed to save</span>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Metadata</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm text-muted-foreground">
+          <p>ID: <span className="font-mono">{lead.id}</span></p>
+          <p>Created: {nullText(lead.created_at)}</p>
+          <p>Updated: {nullText(lead.updated_at)}</p>
         </CardContent>
       </Card>
     </div>
