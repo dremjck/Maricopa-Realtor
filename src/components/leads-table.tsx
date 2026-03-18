@@ -1,10 +1,10 @@
 "use client"
 
-import React, { useState, useMemo } from "react"
+import React, { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import type { Lead } from "@/types/lead"
-import { DOCUMENT_CODES, LEAD_QUALITIES, LEAD_QUALITY_RANK } from "@/types/lead"
+import { DOCUMENT_CODES, LEAD_QUALITY_RANK } from "@/types/lead"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -15,6 +15,12 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
+import {
+  getSavedFilters,
+  setSavedFilters,
+  DEFAULT_FILTERS,
+  type DashboardFilters,
+} from "@/lib/filters-storage"
 
 function nullText(value: string | null | undefined, emptyLabel?: string): string {
   if (value == null || value.trim() === "") return emptyLabel ?? "—"
@@ -62,10 +68,36 @@ export function LeadsTable({ initialLeads }: LeadsTableProps) {
   const router = useRouter()
   const [leads] = useState<Lead[]>(initialLeads)
   const [search, setSearch] = useState("")
-  const [documentCodeFilter, setDocumentCodeFilter] = useState<string>("all")
-  const [apnFilter, setApnFilter] = useState<string>("all")
-  const [leadQualitySort, setLeadQualitySort] = useState<string>("none")
-  const [recordingDateSort, setRecordingDateSort] = useState<"latest" | "earliest">("latest")
+  const [isHydrated, setIsHydrated] = useState(false)
+
+  // Initialize with defaults, will be hydrated from localStorage
+  const [documentCodeFilter, setDocumentCodeFilter] = useState<string>(DEFAULT_FILTERS.documentCodeFilter)
+  const [apnFilter, setApnFilter] = useState<string>(DEFAULT_FILTERS.apnFilter)
+  const [leadQualitySort, setLeadQualitySort] = useState<string>(DEFAULT_FILTERS.leadQualitySort)
+  const [recordingDateSort, setRecordingDateSort] = useState<"latest" | "earliest">(DEFAULT_FILTERS.recordingDateSort)
+
+  // Hydrate state from localStorage on mount
+  useEffect(() => {
+    const saved = getSavedFilters()
+    setDocumentCodeFilter(saved.documentCodeFilter)
+    setApnFilter(saved.apnFilter)
+    setLeadQualitySort(saved.leadQualitySort)
+    setRecordingDateSort(saved.recordingDateSort)
+    setIsHydrated(true)
+  }, [])
+
+  // Persist filters to localStorage whenever they change (after hydration)
+  useEffect(() => {
+    if (!isHydrated) return
+
+    const filters: DashboardFilters = {
+      documentCodeFilter,
+      apnFilter,
+      leadQualitySort,
+      recordingDateSort,
+    }
+    setSavedFilters(filters)
+  }, [documentCodeFilter, apnFilter, leadQualitySort, recordingDateSort, isHydrated])
 
   const filteredLeads = useMemo(() => {
     return leads.filter((lead) => {

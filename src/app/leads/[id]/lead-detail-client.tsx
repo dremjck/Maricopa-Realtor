@@ -9,6 +9,7 @@ import {
   getRedfinSearchUrl,
   getGoogleMapsUrl,
   getMaricopaAssessorUrl,
+  getTruePeopleSearchUrl,
 } from "@/lib/links"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -28,7 +29,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ExternalLink, FileText, MapPin, Check, Loader2, Building } from "lucide-react"
+import { ExternalLink, FileText, MapPin, Check, Loader2, Building, Search } from "lucide-react"
 
 function nullText(value: string | null | undefined, emptyLabel?: string): string {
   if (value == null || String(value).trim() === "") return emptyLabel ?? "—"
@@ -84,6 +85,18 @@ export function LeadDetailClient({ lead: initialLead }: LeadDetailClientProps) {
   const redfin = getRedfinSearchUrl(lead.address)
   const maps = getGoogleMapsUrl(lead.address)
   const assessorUrl = getMaricopaAssessorUrl(lead.apn)
+  
+  // TruePeopleSearch: assessor_summary is PRIMARY source, structured fields are FALLBACK
+  const truePeopleSearchResult = getTruePeopleSearchUrl(
+    lead.assessor_summary,
+    lead.address,
+    lead.city,
+    lead.state,
+    lead.zip,
+    lead.id,
+    true // enable debug logging
+  )
+  const truePeopleSearchUrl = truePeopleSearchResult.url
 
   async function handleSave() {
     setSaving(true)
@@ -169,6 +182,17 @@ export function LeadDetailClient({ lead: initialLead }: LeadDetailClientProps) {
                 Maricopa Assessor
               </a>
             )}
+            {truePeopleSearchUrl && (
+              <a
+                href={truePeopleSearchUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+              >
+                <Search className="h-4 w-4" />
+                TruePeopleSearch
+              </a>
+            )}
             {zillow && (
               <a
                 href={zillow}
@@ -202,7 +226,7 @@ export function LeadDetailClient({ lead: initialLead }: LeadDetailClientProps) {
                 Google Maps
               </a>
             )}
-            {!lead.source_pdf_url && !assessorUrl && !zillow && !redfin && !maps && (
+            {!lead.source_pdf_url && !assessorUrl && !truePeopleSearchUrl && !zillow && !redfin && !maps && (
               <p className="text-sm text-muted-foreground">No links available</p>
             )}
           </div>

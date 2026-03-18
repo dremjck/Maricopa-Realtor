@@ -15,6 +15,9 @@ export type Lead = {
   document_code: string | null
   document_type: string | null
   address: string | null
+  city: string | null
+  state: string | null
+  zip: string | null
   apn: string | null
   source_pdf_url: string | null
   owner_names: string | null
