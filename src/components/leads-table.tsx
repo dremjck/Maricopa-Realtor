@@ -27,6 +27,22 @@ function nullText(value: string | null | undefined, emptyLabel?: string): string
   return value
 }
 
+// Normalize APN to ###-##-### format (last segment should only be 3 digits)
+function formatApn(apn: string | null | undefined): string {
+  if (!apn?.trim()) return "—"
+  const trimmed = apn.trim()
+  
+  // Match pattern: digits-digits-digits (with potentially 4 digits at the end)
+  const match = trimmed.match(/^(\d{3})-(\d{2})-(\d{3,4})$/)
+  if (match) {
+    // Truncate last segment to 3 digits
+    return `${match[1]}-${match[2]}-${match[3].slice(0, 3)}`
+  }
+  
+  // If it doesn't match the expected pattern, return as-is
+  return trimmed
+}
+
 function DocumentCodeBadge({ code }: { code: string | null }) {
   if (!code?.trim()) return <span className="text-muted-foreground text-xs">—</span>
   const upper = code.toUpperCase().trim()
@@ -124,21 +140,27 @@ export function LeadsTable({ initialLeads }: LeadsTableProps) {
   }, [leads, search, documentCodeFilter, apnFilter])
 
   const sortedLeads = useMemo(() => {
-    let sorted = [...filteredLeads]
+    const sorted = [...filteredLeads]
 
+    // Primary sort: by recording date
+    sorted.sort((a, b) => {
+      const dateA = a.recording_date ? new Date(a.recording_date).getTime() : 0
+      const dateB = b.recording_date ? new Date(b.recording_date).getTime() : 0
+      
+      if (recordingDateSort === "latest") {
+        return dateB - dateA
+      } else {
+        return dateA - dateB
+      }
+    })
+
+    // Secondary sort: by lead quality (if selected, this becomes primary)
     if (leadQualitySort === "high-to-low" || leadQualitySort === "low-to-high") {
       sorted.sort((a, b) => {
         const rankA = LEAD_QUALITY_RANK[a.lead_quality?.toLowerCase() ?? ""] ?? 99
         const rankB = LEAD_QUALITY_RANK[b.lead_quality?.toLowerCase() ?? ""] ?? 99
         if (leadQualitySort === "high-to-low") return rankA - rankB
         return rankB - rankA
-      })
-    } else {
-      sorted.sort((a, b) => {
-        const dateA = a.recording_date ? new Date(a.recording_date).getTime() : 0
-        const dateB = b.recording_date ? new Date(b.recording_date).getTime() : 0
-        if (recordingDateSort === "latest") return dateB - dateA
-        return dateA - dateB
       })
     }
 
@@ -235,7 +257,7 @@ export function LeadsTable({ initialLeads }: LeadsTableProps) {
                     {nullText(lead.recording_date)}
                   </td>
                   <td className="p-3 text-muted-foreground font-mono text-xs">
-                    {nullText(lead.apn)}
+                    {formatApn(lead.apn)}
                   </td>
                   <td className="p-3 text-muted-foreground max-w-[180px] truncate">
                     {getOwnerDisplay(lead)}
