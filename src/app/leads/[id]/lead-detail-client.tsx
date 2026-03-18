@@ -8,6 +8,7 @@ import {
   getZillowSearchUrl,
   getRedfinSearchUrl,
   getGoogleMapsUrl,
+  getMaricopaAssessorUrl,
 } from "@/lib/links"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,11 +27,44 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { ExternalLink, FileText, MapPin, Check, Loader2 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { ExternalLink, FileText, MapPin, Check, Loader2, Building } from "lucide-react"
 
-function nullText(value: string | null, emptyLabel?: string): string {
-  if (value == null || value.trim() === "") return emptyLabel ?? "—"
-  return value
+function nullText(value: string | null | undefined, emptyLabel?: string): string {
+  if (value == null || String(value).trim() === "") return emptyLabel ?? "—"
+  return String(value)
+}
+
+function boolText(value: boolean | null | undefined): string {
+  if (value == null) return "—"
+  return value ? "Yes" : "No"
+}
+
+function FieldRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className="text-sm">{value}</p>
+    </div>
+  )
+}
+
+function LeadQualityBadge({ quality }: { quality: string | null }) {
+  if (!quality?.trim()) return <span className="text-muted-foreground">—</span>
+  const lower = quality.toLowerCase().trim()
+  const variant =
+    lower === "good"
+      ? "success"
+      : lower === "maybe"
+        ? "warning"
+        : lower === "skip"
+          ? "destructive"
+          : "outline"
+  return (
+    <Badge variant={variant} className="text-xs capitalize">
+      {lower}
+    </Badge>
+  )
 }
 
 interface LeadDetailClientProps {
@@ -49,6 +83,7 @@ export function LeadDetailClient({ lead: initialLead }: LeadDetailClientProps) {
   const zillow = getZillowSearchUrl(lead.address)
   const redfin = getRedfinSearchUrl(lead.address)
   const maps = getGoogleMapsUrl(lead.address)
+  const assessorUrl = getMaricopaAssessorUrl(lead.apn)
 
   async function handleSave() {
     setSaving(true)
@@ -91,112 +126,24 @@ export function LeadDetailClient({ lead: initialLead }: LeadDetailClientProps) {
 
   return (
     <div className="space-y-6">
+      {/* Assessor Summary - Top priority */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Property Info</CardTitle>
+          <CardTitle className="text-lg">Assessor Summary</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div>
-            <p className="text-sm text-muted-foreground">Address</p>
-            <p className="font-medium">{nullText(lead.address)}</p>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-muted-foreground">APN</p>
-              <p className="font-mono text-sm">{nullText(lead.apn)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Recording Number</p>
-              <p className="font-mono text-sm">{nullText(lead.recording_number)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Recording Date</p>
-              <p className="text-sm">{nullText(lead.recording_date)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Document Code</p>
-              <p className="text-sm">{nullText(lead.document_code)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Document Type</p>
-              <p className="text-sm">{nullText(lead.document_type)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Owner Names</p>
-              <p className="text-sm">{nullText(lead.owner_names)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Beneficiary Name</p>
-              <p className="text-sm">{nullText(lead.beneficiary_name)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Trustee Name</p>
-              <p className="text-sm">{nullText(lead.trustee_name)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Auction Date</p>
-              <p className="text-sm">{nullText(lead.auction_date, "no auction date")}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Auction Time</p>
-              <p className="text-sm">{nullText(lead.auction_time)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Original Principal Balance</p>
-              <p className="text-sm">{nullText(lead.original_principal_balance)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Parse Status</p>
-              <p className="text-sm">{nullText(lead.parse_status)}</p>
-            </div>
-          </div>
+        <CardContent>
+          {lead.assessor_summary?.trim() ? (
+            <p className="text-sm whitespace-pre-wrap">{lead.assessor_summary}</p>
+          ) : (
+            <p className="text-sm text-muted-foreground italic">No assessor summary available</p>
+          )}
         </CardContent>
       </Card>
 
+      {/* External Links */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Contact Info</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Phone Number</label>
-            <Input
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              placeholder="(555) 123-4567"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="contacted"
-              checked={contacted}
-              onCheckedChange={(checked) => setContacted(!!checked)}
-            />
-            <label htmlFor="contacted" className="text-sm font-medium">
-              Contacted
-            </label>
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Status</label>
-            <Select value={status} onValueChange={(v) => setStatus(v)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {statusOptions.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Source Links</CardTitle>
+          <CardTitle className="text-lg">External Links</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3">
@@ -209,6 +156,17 @@ export function LeadDetailClient({ lead: initialLead }: LeadDetailClientProps) {
               >
                 <FileText className="h-4 w-4" />
                 Source PDF
+              </a>
+            )}
+            {assessorUrl && (
+              <a
+                href={assessorUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+              >
+                <Building className="h-4 w-4" />
+                Maricopa Assessor
               </a>
             )}
             {zillow && (
@@ -244,18 +202,126 @@ export function LeadDetailClient({ lead: initialLead }: LeadDetailClientProps) {
                 Google Maps
               </a>
             )}
-            {!lead.source_pdf_url && !zillow && !redfin && !maps && (
-              <p className="text-sm text-muted-foreground">No links (address missing)</p>
+            {!lead.source_pdf_url && !assessorUrl && !zillow && !redfin && !maps && (
+              <p className="text-sm text-muted-foreground">No links available</p>
             )}
           </div>
         </CardContent>
       </Card>
 
+      {/* Core Property Info */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Core Property Info</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <p className="text-sm text-muted-foreground">Address</p>
+              <p className="font-medium">{nullText(lead.address)}</p>
+            </div>
+            <FieldRow label="APN" value={nullText(lead.apn)} />
+            <FieldRow label="Recording Number" value={nullText(lead.recording_number)} />
+            <FieldRow label="Recording Date" value={nullText(lead.recording_date)} />
+            <FieldRow label="Document Code" value={nullText(lead.document_code)} />
+            <FieldRow label="Document Type" value={nullText(lead.document_type)} />
+            <FieldRow label="Parse Status" value={nullText(lead.parse_status)} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Document / Distress Info */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Document / Distress Info</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4">
+            <FieldRow label="Owner Names (Document)" value={nullText(lead.owner_names)} />
+            <FieldRow label="Beneficiary Name" value={nullText(lead.beneficiary_name)} />
+            <FieldRow label="Trustee Name" value={nullText(lead.trustee_name)} />
+            <FieldRow label="Auction Date" value={nullText(lead.auction_date, "no auction date")} />
+            <FieldRow label="Auction Time" value={nullText(lead.auction_time)} />
+            <FieldRow label="Original Principal Balance" value={nullText(lead.original_principal_balance)} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Assessor Enrichment Info */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Assessor Enrichment Data</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4">
+            <FieldRow label="Assessor Lookup Status" value={nullText(lead.assessor_lookup_status)} />
+            <FieldRow label="Assessor Owner Name" value={nullText(lead.assessor_owner_name)} />
+            <FieldRow label="Assessor Mailing Address" value={nullText(lead.assessor_mailing_address)} />
+            <FieldRow label="Assessor Property Address" value={nullText(lead.assessor_property_address)} />
+            <FieldRow label="Parcel Type" value={nullText(lead.parcel_type)} />
+            <FieldRow label="Property Use Code" value={nullText(lead.property_use_code)} />
+            <FieldRow label="Property Use Description" value={nullText(lead.property_use_description)} />
+            <FieldRow label="Valuation Description" value={nullText(lead.valuation_description)} />
+            <FieldRow label="Subdivision Name" value={nullText(lead.subdivision_name)} />
+            <FieldRow label="MCR Number" value={nullText(lead.mcr_number)} />
+            <FieldRow label="Full Cash Value" value={nullText(lead.full_cash_value)} />
+            <FieldRow label="Lot Size (sqft)" value={nullText(lead.lot_size_sqft)} />
+            <FieldRow label="Year Built" value={nullText(lead.year_built)} />
+            <FieldRow label="Sale Date (Assessor)" value={nullText(lead.sale_date_assessor)} />
+            <FieldRow label="Sale Price (Assessor)" value={nullText(lead.sale_price_assessor)} />
+            <FieldRow label="Owner Name Match" value={boolText(lead.owner_name_match)} />
+            <FieldRow label="Address Match" value={boolText(lead.address_match)} />
+            <FieldRow label="Is Single Family" value={boolText(lead.is_single_family)} />
+            <FieldRow label="Is Owner Occupied" value={boolText(lead.is_owner_occupied)} />
+            <div>
+              <p className="text-sm text-muted-foreground">Lead Quality</p>
+              <LeadQualityBadge quality={lead.lead_quality} />
+            </div>
+            <FieldRow label="Lead Skip Reason" value={nullText(lead.lead_skip_reason)} />
+            <FieldRow label="Assessor Last Checked" value={nullText(lead.assessor_last_checked_at)} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* CRM Actions */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">CRM Actions</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Phone Number</label>
+            <Input
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              placeholder="(555) 123-4567"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="contacted"
+              checked={contacted}
+              onCheckedChange={(checked) => setContacted(!!checked)}
+            />
+            <label htmlFor="contacted" className="text-sm font-medium">
+              Contacted
+            </label>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Status</label>
+            <Select value={status} onValueChange={(v) => setStatus(v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {statusOptions.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">Notes</label>
             <Textarea
@@ -290,6 +356,7 @@ export function LeadDetailClient({ lead: initialLead }: LeadDetailClientProps) {
         </CardContent>
       </Card>
 
+      {/* Metadata */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Metadata</CardTitle>
